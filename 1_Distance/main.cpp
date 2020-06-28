@@ -13,25 +13,15 @@ DigitalIn pin3(D3);
 DigitalInOut pin10(D10);
 DigitalOut GREEN(LED2);
 DigitalOut BLUE(LED3);
-EventQueue queue1(32 * EVENTS_EVENT_SIZE);
-EventQueue queue(32 * EVENTS_EVENT_SIZE);
-Thread xbee_get;
-Thread pingled;
-char buf1[1000] = {0};
 char s[21];
+char recv[1000] = {0};
 
 BBCar car(pin8, pin9, servo_ticker);
-
-void xbee_rx_interrupt(void);
-void xbee_rx(void);
 
 
 int main() {
     wait(3);
     BLUE = 1;
-    // Setup a serial interrupt function of receiving data from xbee
-    xbee_get.start(callback(&queue, &EventQueue::dispatch_forever));
-    xbee.attach(xbee_rx_interrupt, Serial::RxIrq);
     
     // enter //
     parallax_encoder encoder0(pin3, encoder_ticker);
@@ -44,20 +34,17 @@ int main() {
     BLUE = 0;
     uart.baud(9600);
     
-    xbee.printf(s,"matrix");
-    uart.puts(s);
-    xbee.printf("send\r\n");
-    wait(0.5);
     matrix_shot.start();
-    while(uart.readable() && matrix_shot.read()<10){
-        for( int i = 0;;i++){
-            char recv = uart.getc();
-            if (recv == '\r'){
-                break;
-            }
-            buf1[i] = pc.putc(recv);
-        }
-        xbee.printf("%s\r\n",buf1);
+    while(matrix_shot.read()<10){
+      xbee.printf(s,"matrix");
+      uart.puts(s);
+      xbee.printf("send\r\n");
+      wait(0.5);
+      if(uart.readable()){
+        char recv = uart.getc();
+        xbee.putc(recv);
+        xbee.printf("\r\n");
+      }
     }
     matrix_shot.reset();
     BLUE = 1;
@@ -84,24 +71,21 @@ int main() {
     car.turn(100, -0.1); wait_us(1500); xbee.printf("Turn right(face to number)\r\n"); car.stop();
     
     // machine learning //
-    BLUE = 1;
-    xbee.printf(s,"number");
-    uart.puts(s);
-    xbee.printf("send\r\n");
-    wait(0.5);
+    BLUE = 0;
     matrix_shot.start();
-    while(uart.readable() && matrix_shot.read()<10){
-        for( int i = 0;;i++){
-            char recv = uart.getc();
-            if (recv == '\r'){
-                break;
-            }
-            buf1[i] = pc.putc(recv);
-        }
-        xbee.printf("%s\r\n",buf1);
+    while(matrix_shot.read()<10){
+      xbee.printf(s,"number");
+      uart.puts(s);
+      xbee.printf("send\r\n");
+      wait(0.5);
+      if(uart.readable()){
+        char recv = uart.getc();
+        xbee.putc(recv);
+        xbee.printf("\r\n");
+      }
     }
     matrix_shot.reset();
-    BLUE = 0;
+    BLUE = 1;
     
     // car into garage
     car.turn(-100, -0.1); wait_us(1500); xbee.printf("Reverse right\r\n"); car.stop();
@@ -139,20 +123,17 @@ int main() {
     
     // calibrate by matrix(save shot)//
     BLUE = 0;
-    xbee.printf(s,"matrix");
-    uart.puts(s);
-    xbee.printf("send\r\n");
-    wait(0.5);
     matrix_shot.start();
-    while(uart.readable() && matrix_shot.read()<10){
-        for( int i = 0;;i++){
-            char recv = uart.getc();
-            if (recv == '\r'){
-                break;
-            }
-            buf1[i] = pc.putc(recv);
-        }
-        xbee.printf("%s\r\n",buf1);
+    while(matrix_shot.read()<10){
+      xbee.printf(s,"matrix");
+      uart.puts(s);
+      xbee.printf("send\r\n");
+      wait(0.5);
+      if(uart.readable()){
+        char recv = uart.getc();
+        xbee.putc(recv);
+        xbee.printf("\r\n");
+      }
     }
     matrix_shot.reset();
     BLUE = 1;
@@ -162,7 +143,7 @@ int main() {
     BLUE = 0;
     matrix_shot.start();
     xbee.printf("Detect the object");
-    while(matrix_shot.read()<10){
+    while(matrix_shot.read()<5){
         parallax_ping  ping1(pin10);
         if((float)ping1>62){xbee.printf("Triangle\r\n");}
         else if((float)ping1>50 && (float)ping1<54){xbee.printf("Square\r\n");}
@@ -184,27 +165,6 @@ int main() {
     GREEN = 0; car.goStraight(100);
     while(encoder0.get_cm()<100) {wait_us(50000);xbee.printf("Go Straight(to exit)\r\n");}
     GREEN = 1; car.stop(); wait_us(50000); xbee.printf("Leave\r\n");
-}
-
-void xbee_rx_interrupt(void)
-{
-  xbee.attach(NULL, Serial::RxIrq); // detach interrupt
-  queue.call(&xbee_rx);
-}
-
-void xbee_rx(void)
-{
-  char buf[100] = {0};
-  while(xbee.readable()){
-    for (int i=0; ; i++) {
-      char recv = xbee.getc();
-      if (recv == '\r') {
-         break;
-      }
-      buf[i] = pc.putc(recv);
-    }
-    xbee.printf("%s\r\n", buf);
-    wait(0.1);
-  }
-  xbee.attach(xbee_rx_interrupt, Serial::RxIrq); // reattach interrupt
+    
+    while(1){car.goStraight(0);}
 }
