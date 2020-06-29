@@ -5,8 +5,8 @@ import numpy as np
 
 serdev = '/dev/ttyUSB0'
 s = serial.Serial(serdev, 9600)
+print('start\r')
 while(1):
-    print('\r')
     line=s.readline() # Read an echo string from K66F terminated with '\n' (RPC)
     print(line)
-    time.sleep(3)
+    time.sleep(1)
